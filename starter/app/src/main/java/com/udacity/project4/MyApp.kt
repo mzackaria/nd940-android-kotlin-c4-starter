@@ -43,5 +43,6 @@ class MyApp : Application() {
             androidContext(this@MyApp)
             modules(listOf(myModule))
         }
+
     }
 }
