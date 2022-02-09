@@ -9,6 +9,8 @@ import androidx.room.Room
  */
 object LocalDB {
 
+    private lateinit var INSTANCE : RemindersDao
+
     /**
      * static method that creates a reminder class and returns the DAO of the reminder
      */
@@ -17,6 +19,13 @@ object LocalDB {
             context.applicationContext,
             RemindersDatabase::class.java, "locationReminders.db"
         ).build().reminderDao()
+    }
+
+    fun getDatabase(context: Context) : RemindersDao {
+        return synchronized(RemindersDao::class.java) {
+            if (!::INSTANCE.isInitialized) INSTANCE = createRemindersDao(context)
+            INSTANCE
+        }
     }
 
 }
