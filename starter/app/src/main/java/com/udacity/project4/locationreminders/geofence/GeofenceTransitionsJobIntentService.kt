@@ -11,6 +11,7 @@ import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
 import com.udacity.project4.utils.sendNotification
 import kotlinx.coroutines.*
 import org.koin.android.ext.android.inject
+import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 
 class GeofenceTransitionsJobIntentService : JobIntentService(), CoroutineScope {
@@ -21,8 +22,9 @@ class GeofenceTransitionsJobIntentService : JobIntentService(), CoroutineScope {
 
     companion object {
         private const val JOB_ID = 573
+        const val INTENT_EXTRA_REQUEST_ID = "573"
 
-        //        TODO: call this to start the JobIntentService to handle the geofencing transition events
+        // TODO: call this to start the JobIntentService to handle the geofencing transition events
         fun enqueueWork(context: Context, intent: Intent) {
             enqueueWork(
                 context,
@@ -33,6 +35,17 @@ class GeofenceTransitionsJobIntentService : JobIntentService(), CoroutineScope {
     }
 
     override fun onHandleWork(intent: Intent) {
+
+        Timber.i("onHandleWork enter point")
+
+        if (!intent.hasExtra(INTENT_EXTRA_REQUEST_ID)) {
+            return
+        }
+
+        Timber.i("onHandleWork intent has extra")
+
+        val triggeringGeofences = intent.getSerializableExtra(INTENT_EXTRA_REQUEST_ID) as List<Geofence>
+        sendNotification(triggeringGeofences = triggeringGeofences)
         //TODO: handle the geofencing transition events and
         // send a notification to the user when he enters the geofence area
         //TODO call @sendNotification
@@ -40,7 +53,7 @@ class GeofenceTransitionsJobIntentService : JobIntentService(), CoroutineScope {
 
     //TODO: get the request id of the current geofence
     private fun sendNotification(triggeringGeofences: List<Geofence>) {
-        val requestId = ""
+        val requestId = triggeringGeofences.get(0).requestId
 
         //Get the local repository instance
         val remindersLocalRepository: RemindersLocalRepository by inject()
