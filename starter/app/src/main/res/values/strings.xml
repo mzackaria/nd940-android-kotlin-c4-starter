@@ -42,4 +42,6 @@
     <string name="error_adding_geofence">Error Happened, Can\'t Add Geofence</string>
     <string name="geofences_added">Geofence Added</string>
     <string name="location_confirmation">Is this the location you want to be reminded of ?</string>
+    <string name="error_location_not_set">Set up the location before registering</string>
+    <string name="unknown_location">Unknown Location</string>
 </resources>

@@ -3,17 +3,15 @@ package com.udacity.project4.locationreminders.savereminder.selectreminderlocati
 
 import android.Manifest
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.location.Location
-import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
+import android.util.Log
 import android.view.*
-import android.widget.Toast
-import android.widget.Toast.LENGTH_SHORT
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
@@ -25,10 +23,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.GoogleMap.*
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MapStyleOptions
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.*
 import com.google.android.material.snackbar.Snackbar
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
@@ -43,15 +38,16 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     //Use Koin to get the view model of the SaveReminder
     override val _viewModel: SaveReminderViewModel by inject()
     private lateinit var binding: FragmentSelectLocationBinding
-    
+
     private lateinit var map: GoogleMap
 
     private lateinit var snackBar : Snackbar
+    private var markerChosenPosition : Marker? = null
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private val ZOOM = 15f
-    private var markerChosenPosition : Marker? =  null
+    private var poiPosition : PointOfInterest? =  null
 
     private val REQUEST_LOCATION_PERMISSION = 1
 
@@ -65,7 +61,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             override fun onLocationResult(locationResult: LocationResult?) {
                 locationResult ?: return
                 for (location in locationResult.locations){
-                    moveCamera(location,true)
+                    val lat = location.latitude
+                    val lng = location.longitude
+                    val latLng = LatLng(lat, lng)
+                    moveCamera(latLng)
                 }
                 fusedLocationClient.removeLocationUpdates(this)
             }
@@ -105,27 +104,57 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     //setting up the map and calling to enable position
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
+        map.setOnPoiClickListener { poi ->
+
+            poiPosition = poi
+            setPosition(poi.name, poi.latLng)
+        }
         map.setOnMapClickListener {
-            it?.let {latLng ->
+            it?.let { latLng ->
                 markerChosenPosition?.remove()
-                markerChosenPosition = map.addMarker(MarkerOptions().position(latLng))
-                snackBar.show()
+                setPosition(getString(R.string.unknown_location), latLng)
             }
         }
-        map.setOnCameraMoveListener {
-            snackBar.dismiss()
-        }
+        setMapStyle()
         enableMyLocation()
     }
 
-    fun moveCamera(location : Location, animate : Boolean = false) {
-        val lat = location.latitude
-        val lng = location.longitude
-        val homeLatLng = LatLng(lat, lng)
-        if (animate) {
-            map.animateCamera(CameraUpdateFactory.newLatLngZoom(homeLatLng, ZOOM))
+    private fun setMapStyle() {
+        try {
+            // Customize the styling of the base map using a JSON object defined
+            // in a raw resource file.
+            val success = map.setMapStyle(
+                MapStyleOptions.loadRawResourceStyle(
+                    requireContext(),
+                    R.raw.map_style
+                )
+            )
+
+            if (!success) {
+                Timber.e("Style parsing failed.")
+            }
+        } catch (e: Resources.NotFoundException) {
+            Timber.e(  "Can't find style. Error: ${e.message}")
+        }
+    }
+
+    private fun setPosition(name: String, latLng: LatLng) {
+        markerChosenPosition?.remove()
+        markerChosenPosition = map.addMarker(
+            MarkerOptions()
+                .position(latLng)
+                .title(name)
+        )
+        markerChosenPosition?.showInfoWindow()
+        moveCamera(latLng, true)
+        snackBar.show()
+    }
+
+    fun moveCamera(latLng : LatLng, animate_no_zoom : Boolean = false) {
+        if (animate_no_zoom) {
+            map.animateCamera(CameraUpdateFactory.newLatLng(latLng))
         } else {
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(homeLatLng, ZOOM))
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, ZOOM))
         }
     }
 
@@ -167,10 +196,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
     /*
-         *  When we get the result from asking the user to turn on device location, we call
-         *  checkDeviceLocationSettingsAndStartGeofence again to make sure it's actually on, but
-         *  we don't resolve the check to keep the user from seeing an endless loop.
-         */
+     *  When we get the result from asking the user to turn on device location, we call
+     *  checkDeviceLocationSettingsAndStartGeofence again to make sure it's actually on, but
+     *  we don't resolve the check to keep the user from seeing an endless loop.
+     */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_TURN_DEVICE_LOCATION_ON) {
@@ -227,11 +256,12 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
     private fun onLocationSelected() {
-        markerChosenPosition?.let {
-            _viewModel.latitude.value = it.position.latitude
-            _viewModel.longitude.value = it.position.longitude
-            findNavController().popBackStack()
-        }
+        _viewModel.latitude.value = markerChosenPosition?.position?.latitude
+        _viewModel.longitude.value = markerChosenPosition?.position?.longitude
+        _viewModel.reminderSelectedLocationStr.value = markerChosenPosition?.title
+        _viewModel.selectedPOI.value = poiPosition
+        findNavController().popBackStack()
+
     }
     //endregion
 

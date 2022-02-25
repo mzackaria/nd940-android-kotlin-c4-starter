@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings.Secure.getString
 import android.util.Log
+import android.widget.Toast
+import android.widget.Toast.LENGTH_SHORT
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingEvent
@@ -26,6 +28,8 @@ import java.io.Serializable
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        Timber.i("onReceive just arrived")
+        Toast.makeText(context, "onReceive", LENGTH_SHORT).show()
 
         //get the intent from geofencing event
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
@@ -40,8 +44,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         // Test that the reported transition was of interest.
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER ||
-        geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+        geofenceTransition == Geofence.GEOFENCE_TRANSITION_DWELL ||
+        geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT
+        ) {
             Timber.i("geofence SIZE = ${(geofenceTransition as ArrayList<Geofence>).size}")
+            Toast.makeText(context, "BROADCAST RECEIVER", LENGTH_SHORT).show()
 
             val triggeringGeofences = geofencingEvent.triggeringGeofences
 
